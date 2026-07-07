@@ -10,50 +10,67 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-            python-version: "3.13"
+          python-version: "3.13"
 
       - name: Install Dependencies
         run: pip install -r requirements.txt
 
       - name: Start FastAPI
         run: |
-            uvicorn app.main:app --host 127.0.0.1 --port 8000 &
+          uvicorn app.main:app --host 127.0.0.1 --port 8000 &
 
       - name: Wait for FastAPI
         run: sleep 5
 
       - name: Health Check
         run: |
-            curl --fail http://127.0.0.1:8000/health
-
+          curl --fail http://127.0.0.1:8000/health
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-            aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-            aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-            aws-region: ap-south-1
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
 
       - name: Verify AWS CLI
         run: aws --version
-            
+
       - name: Verify AWS Credentials
+        run: aws sts get-caller-identity
+
+      - name: Create Version Variable
         run: |
-            aws sts get-caller-identity
+          echo "VERSION=${{ github.sha }}" >> $GITHUB_ENV
 
       - name: Create Deployment Bundle
         run: |
-            zip -r app.zip . \
+          zip -r app-${VERSION}.zip . \
             -x ".git/*" \
             -x ".github/*" \
             -x ".venv/*" \
             -x "__pycache__/*"
-            
+
       - name: Upload Bundle to S3
         run: |
-            aws s3 cp app.zip s3://fastapi-deploy-test-artifacts/app.zip
+          aws s3 cp app-${VERSION}.zip s3://fastapi-deploy-test-artifacts/app-${VERSION}.zip
+
+      - name: Create Application Version
+        run: |
+          aws elasticbeanstalk create-application-version \
+            --application-name fastapi-deploy-test \
+            --version-label ${VERSION} \
+            --source-bundle S3Bucket="fastapi-deploy-test-artifacts",S3Key="app-${VERSION}.zip"
+
+      - name: Deploy to Elastic Beanstalk
+        run: |
+          aws elasticbeanstalk update-environment \
+            --application-name fastapi-deploy-test \
+            --environment-name Fastapi-deploy-test-env \
+            --version-label ${VERSION}
