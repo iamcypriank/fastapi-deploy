@@ -40,6 +40,23 @@ async def root():
 
 
 
+@app.get("/home",response_class=HTMLResponse)
+async def home():
+    return """
+
+    <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <title>Message</title>
+        </head>
+        <body>
+            <h1>Homepage</h1>
+        </body>
+        </html>
+
+    """
+
 @app.get("/health")
 async def health():
     return {"status": "healthy"}
