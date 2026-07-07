@@ -53,3 +53,7 @@ jobs:
             -x ".github/*" \
             -x ".venv/*" \
             -x "__pycache__/*"
+            
+      - name: Upload Bundle to S3
+        run: |
+            aws s3 cp app.zip s3://fastapi-deploy-test-artifacts/app.zip
