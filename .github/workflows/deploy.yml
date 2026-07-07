@@ -30,3 +30,28 @@ jobs:
       - name: Health Check
         run: |
             curl --fail http://127.0.0.1:8000/health
+
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+            aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+            aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            aws-region: ap-south-1
+
+      - name: Install AWS CLI
+        run: |
+            sudo apt-get update
+            sudo apt-get install -y awscli
+    
+      - name: Verify AWS Credentials
+        run: |
+            aws sts get-caller-identity
+
+      - name: Create Deployment Bundle
+        run: |
+            zip -r app.zip . \
+            -x ".git/*" \
+            -x ".github/*" \
+            -x ".venv/*" \
+            -x "__pycache__/*"
